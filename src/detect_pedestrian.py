@@ -22,9 +22,12 @@ for annotation in annotations:
         object_start = (int(object.bounding_box[0]), int(object.bounding_box[1]))
         object_end = (int(object.bounding_box[2]), int(object.bounding_box[3]))
         cropped_image = image[object_start[1]:object_end[1], object_start[0]:object_end[0]]
-        cv2.imshow('img', image)
-        cv2.imshow('cropped', cropped_image)
+        resized_image = cv2.resize(cropped_image, (64, 128))
+        # cv2.imshow('img', image)
+        # cv2.imshow('cropped', cropped_image)
+        cv2.imshow('resized', resized_image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+
 
     # board.add_to_plot(loader.read_raw_image(image), [0,0], 'image')
