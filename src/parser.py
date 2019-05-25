@@ -21,7 +21,7 @@ class Parser:
         objects = []
         for object_ground_truth in set(objects_ground_truth):
             objects_match = re.findall(".*{}.*".format(object_ground_truth), file_data)
-            objects.append(self.parse_objects(objects_match))
+            objects = objects + self.parse_objects(objects_match)
 
         return ImageAnnotation(file_name, image_size, database[0], objects_ground_truth, objects)
 
