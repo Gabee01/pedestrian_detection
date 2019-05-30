@@ -10,15 +10,16 @@ class Hog:
 		self.bins_angles = [math.radians(angle) for angle in [0, 20, 40, 60, 80, 100, 120, 140, 160, 180]]
 		# self.bins_angles = [10, 30, 50, 70, 90, 110, 130, 150, 170]
 
-	def get_block_bins(self, image, window_size):
+	def get_block_bins(self, image, window_size, overlap = 1):
 		histogram_bins = [0] * 9
 		gx = cv2.Sobel(image, cv2.CV_32F, 1, 0, ksize=1)
 		gy = cv2.Sobel(image, cv2.CV_32F, 0, 1, ksize=1)
 
 		mag, angle = cv2.cartToPolar(gx, gy)
+		step = int(window_size/overlap)
 
-		for i in range(window_size):
-			for j in range(window_size):
+		for i in range(step):
+			for j in range(step):
 
 				left_bin = 0
 				right_bin = 0
@@ -64,8 +65,8 @@ class Hog:
 					histogram_bins[right_bin] += abs(chosen_mag * (right_dif/max_dif))
 		return histogram_bins
 
-	def draw_hog(self, image, i, j, histogram, block_size):
-		block_center = (i + block_size/2, j + block_size/2)
+	def draw_hog(self, image, i, j, histogram, block_size, overlap):
+		block_center = (i + block_size/(2 * overlap), j + block_size/(2 * overlap))
 		width, height, _ = image.shape
 		gradient_image = image[:]
 		line_length = math.ceil(block_size / 2)
@@ -93,34 +94,43 @@ class Hog:
 		return gradient_image
 
 
-	def compute(self, image):
+	def compute_blocks(self, image, block_size, overlap = 1):
 		# print(histogram_bins)
+		blocks_histograms = []
+
 		image = np.float32(image)# / 255
 		height, width, _ = image.shape
-		block_size = 8
-		amplify_times = 8
+		amplify_times = 5
 		resized_image = cv2.resize(image, (image.shape[1] * amplify_times, image.shape[0] * amplify_times))
 
-		blocks_histograms = []
 		max_magnitude = 0
-		for i in range(0, height, block_size): # 128/8 = 16
-			for j in range(0, width, block_size): # 64/8 = 8
+		step = int(block_size/overlap)
+		for i in range(0, height, step): # 128/8 = 16
+			for j in range(0, width, step): # 64/8 = 8
 				window = image[i:i+block_size, j:j+block_size]
-				block_histogram = self.get_block_bins(window, block_size)
+				block_histogram = self.get_block_bins(window, block_size, overlap)
 				max_magnitude = max(max(block_histogram), max_magnitude)
 				blocks_histograms.append(block_histogram)
 
 		current_block = 0
-		for i in range(0, height, block_size): # 128/8 = 16
-			for j in range(0, width, block_size): # 64/8 = 8
+		
+		for i in range(0, height, step): # 128/8 = 16
+			for j in range(0, width, step): # 64/8 = 8
 				block_histogram = blocks_histograms[current_block]
-				current_block += 1
 				block_histogram = [magnitude/max_magnitude for magnitude in block_histogram]
-				image = self.draw_hog(resized_image, i * amplify_times, j * amplify_times, block_histogram, block_size * amplify_times)
+				image = self.draw_hog(resized_image, i * amplify_times, j * amplify_times, block_histogram, block_size * amplify_times, overlap)
+				current_block += 1
+		return image, blocks_histograms
 
-
-		cv2.imshow('img' + str(image.shape), resized_image)
+	def compute(self, image):
+		hog_image, blocks_histograms = self.compute_blocks(image, 8)
+		cv2.imshow('img' + str(image.shape), hog_image)
 		cv2.waitKey(0)
+
+		hog_image, blocks_histograms = self.compute_blocks(image, 16, 2)
+		cv2.imshow('img' + str(image.shape), hog_image)
+		cv2.waitKey(0)
+
 		return (blocks_histograms, self.bins_angles[:-1])
 
 		# return (mag, angle)
